@@ -6,7 +6,7 @@ import { Cart } from '../models';
 
 @Injectable()
 export class CartService {
-  private userCarts: Record<string, Cart> = {};
+  private userCarts: Record<string, Cart > = {};
 
   findByUserId(userId: string): Cart {
     return this.userCarts[ userId ];
@@ -14,7 +14,7 @@ export class CartService {
 
   createByUserId(userId: string) {
     const id = v4();
-    const userCart = {
+    const userCart: any = {
       id,
       items: [],
     };
