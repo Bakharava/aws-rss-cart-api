@@ -12,6 +12,7 @@ import { Cart } from './cart/entity/cart';
 import { CartItems } from './cart/entity/cartItems';
 import { Orders } from './order/entity/orders';
 import { User } from './users/entity/user';
+import 'dotenv/config';
 
 const pgConfig: PostgresConnectionOptions = {
   type: 'postgres',
@@ -19,7 +20,7 @@ const pgConfig: PostgresConnectionOptions = {
   port: Number(process.env.POSTGRES_PORT) ?? 5432,
   username: process.env.POSTGRES_USERNAME ?? 'postgres',
   password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_DATABASE ?? 'cart-db',
+  database: process.env.POSTGRES_DATABASE ?? 'postgres',
   synchronize: true,
   logging: true,
   entities: [Cart, CartItems, Orders, User],
