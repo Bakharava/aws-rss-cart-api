@@ -1,29 +1,19 @@
-import {
-  Controller,
-  Get,
-  Delete,
-  Put,
-  Body,
-  Req,
-  Post,
-  UseGuards,
-  HttpStatus,
-} from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { Controller, Get, Delete, Put, Body, Req, Post, UseGuards, HttpStatus } from '@nestjs/common';
 
+import { BasicAuthGuard } from '../auth';
 import { OrderService } from '../order';
 import { AppRequest, getUserIdFromRequest } from '../shared';
-import { CartService } from './services';
-import { BasicAuthGuard } from '../auth';
+
 import { calculateCartTotal } from './models-rules';
+import { CartService } from './services';
+
 import { CartStatuses } from './models';
 
 @Controller('api/profile/cart')
 export class CartController {
   constructor(
       private cartService: CartService,
-      private orderService: OrderService,
-      private datasource: DataSource,
+      private orderService: OrderService
   ) { }
 
   // @UseGuards(JwtAuthGuard)
@@ -76,50 +66,39 @@ export class CartController {
   @UseGuards(BasicAuthGuard)
   @Post('checkout')
   async checkout(@Req() req: AppRequest, @Body() body) {
-    const queryRunner = this.datasource.createQueryRunner();
+    const userId = getUserIdFromRequest(req);
+    const cart =  await this.cartService.findByUserId(userId);
 
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const userId = getUserIdFromRequest(req);
-      const cart = await this.cartService.findByUserId(userId);
-
-      if (!cart) {
-        const statusCode = HttpStatus.BAD_REQUEST;
-        req.statusCode = statusCode;
-
-        return {
-          statusCode,
-          message: 'Cart is empty',
-        }
-      }
-
-      const total = calculateCartTotal(cart);
-
-      const order = await this.orderService.create(
-          {
-            user_id: userId,
-            cart_id: body.cart_id,
-            address: body.address,
-            total,
-          },
-          userId,
-      );
-
-      await this.cartService.setOrderStatus(userId, CartStatuses.ORDERED);
-
-      await queryRunner.commitTransaction();
+    if (!cart) {
+      const statusCode = HttpStatus.BAD_REQUEST;
+      req.statusCode = statusCode
 
       return {
-        statusCode: HttpStatus.OK,
-        message: 'OK',
-        data: { order }
+        statusCode,
+        message: 'Cart is empty',
       }
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-    } finally {
-      await queryRunner.release();
+    }
+
+    const { id: cartId, items } = cart;
+    const total = calculateCartTotal(cart);
+    const order = this.orderService.create(
+        {
+          user_id: userId,
+          cart_id: body.cart_id,
+          address: body.address,
+          comment: body.address.comment,
+          status: 'inProgress',
+          total: total,
+        },
+        userId,
+    );
+
+    await this.cartService.setOrderStatus(userId, CartStatuses.ORDERED);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'OK',
+      data: { order }
     }
   }
 }
